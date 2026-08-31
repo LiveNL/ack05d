@@ -76,6 +76,15 @@ above.
 
 ## Credit
 
-Protocol groundwork across the community: the Linux kernel HID-BPF driver, and the
-userspace projects by RomainGehrig, Jayphen, MarSik, MartinSadovy and 46slv. This driver
-adds the verified BLE handshake for the Telink revision on macOS.
+Protocol groundwork across the community:
+
+- [Linux kernel HID-BPF driver](https://github.com/torvalds/linux/blob/master/drivers/hid/bpf/progs/XPPen__ACK05.bpf.c) — `XPPen__ACK05.bpf.c` (since 6.15): USB enable report and frame layout
+- [RomainGehrig/XPPen-ACK05-driver](https://github.com/RomainGehrig/XPPen-ACK05-driver) — Python, Linux; documented the BLE `FFE0` channel and the `0002`-before-`0003` requirement
+- [Jayphen/xp-pen](https://github.com/Jayphen/xp-pen) — Swift, macOS CoreBluetooth reference
+- [MarSik/kymars-xppen-ack05](https://github.com/MarSik/kymars-xppen-ack05) — Rust, USB; frame decode
+- [MartinSadovy/xppen-ack05](https://github.com/MartinSadovy/xppen-ack05) — Swift, macOS; documented the BLE HID path's limits
+- [46slv/ACK05-Enhanced](https://github.com/46slv/ACK05-Enhanced) — C#, Windows; hardware capture of the dial button
+
+This driver adds the verified BLE handshake for the Telink revision on macOS: subscribe
+`0002` then `0003`, write the enable report **without response** after the first
+heartbeat, with the official 7-packet sequence as fallback.
