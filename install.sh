@@ -25,9 +25,10 @@ swift build -c release --package-path "$REPO"
 BIN_SRC="$(swift build -c release --package-path "$REPO" --show-bin-path)/ack05d"
 
 echo "==> assembling $APP_DIR"
-mkdir -p "$APP_DIR/Contents/MacOS"
+mkdir -p "$APP_DIR/Contents/MacOS" "$APP_DIR/Contents/Resources"
 cp "$BIN_SRC" "$BIN_DST"
 cp "$REPO/app/Info.plist" "$APP_DIR/Contents/Info.plist"
+cp "$REPO/app/AppIcon.icns" "$APP_DIR/Contents/Resources/AppIcon.icns"
 
 echo "==> signing (identity: $IDENTITY)"
 codesign --force --sign "$IDENTITY" --identifier "$LABEL" "$APP_DIR"

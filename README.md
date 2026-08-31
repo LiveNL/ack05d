@@ -87,6 +87,15 @@ Copy `launchd/nl.livenl.ack05d.plist.template` to
 `~/Library/LaunchAgents/`, replace `@BIN@` with the built binary path, then
 `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/nl.livenl.ack05d.plist`.
 
+## Transports
+
+`ack05d` speaks **Bluetooth LE only** (GATT service `FFE0`). Over a USB-C cable or the
+bundled 2.4 GHz dongle the ACK05 enumerates as USB HID instead, exposing the vendor
+collection on HID usage page `0xFF0A` — reachable via `IOHIDManager` with the same
+`02 b0 04` enable report, but **not yet implemented** here. The Linux kernel HID-BPF
+driver documents that path in full if you want to add it. For now, use the remote over
+Bluetooth.
+
 ## Requirements
 
 - macOS 13+
