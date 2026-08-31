@@ -40,6 +40,7 @@ final class Transport: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate 
     private var pending = Set<CBUUID>()
     private var enabledOnce = false
     private var sawStateFrame = false
+    private var retrieveTimer: Timer?
 
     func start() {
         central = CBCentralManager(delegate: self, queue: nil)
@@ -61,10 +62,22 @@ final class Transport: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate 
         } else {
             onStatus?("scanning")
             central.scanForPeripherals(withServices: [Self.service], options: nil)
+            // A connected device stops advertising, so scanning alone misses the case
+            // where macOS re-bonds the remote before we see it. Poll the system's
+            // connected set until either path lands a peripheral.
+            retrieveTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
+                guard let self else { return }
+                if let p = self.central.retrieveConnectedPeripherals(withServices: [Self.service]).first {
+                    self.onStatus?("found system-connected peripheral")
+                    self.connect(p)
+                }
+            }
         }
     }
 
     private func connect(_ p: CBPeripheral) {
+        retrieveTimer?.invalidate()
+        retrieveTimer = nil
         peripheral = p
         p.delegate = self
         central.stopScan()
