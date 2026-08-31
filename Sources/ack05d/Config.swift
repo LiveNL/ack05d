@@ -29,6 +29,9 @@ struct Config: Decodable {
         var key: String?
         /// overlay label shown when overlayCommand is set (defaults to the button name).
         var label: String?
+        /// suppress the daemon's own overlay for this action — e.g. when the invoked
+        /// command draws its own, smarter overlay (a toggle showing on/off state).
+        var silent: Bool?
 
         enum ActionType: String, Decodable {
             case shell           // run `command`

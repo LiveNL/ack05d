@@ -30,7 +30,7 @@ final class ActionRunner {
             break
         case .shell:
             if let cmd = action.command { shell(cmd) }
-            overlay(action.label ?? defaultLabel)
+            if action.silent != true { overlay(action.label ?? defaultLabel) }
         case .mediaKey:
             // The media key raises macOS's own HUD, so ack05d stays silent by default
             // here — only overlay if the config gave an explicit label.
