@@ -1,15 +1,21 @@
 {
-    "overlayCommand": "/usr/bin/osascript -e 'display notification',",
-    "buttons": {
-        "BTN_1": { "type": "shell", "command": "open -a Safari", "label": "Safari" },
-        "BTN_2": { "type": "shell", "command": "open -a Notes", "label": "Notes" },
-        "DIAL": { "type": "wheelModeCycle" }
+  "overlayCommand": "/Users/you/.local/bin/hud",
+  "buttons": {
+    "BTN_1": { "type": "shell", "command": "open -a Safari", "label": "Safari" },
+    "BTN_2": { "type": "shell", "command": "open -a Notes", "label": "Notes" },
+    "BTN_3": { "type": "keystroke", "keystroke": "shift+cmd+4", "label": "screenshot" },
+    "DIAL":  { "type": "wheelModeCycle" }
+  },
+  "wheelModes": [
+    {
+      "name": "volume",
+      "cw":  { "type": "mediaKey", "key": "volume_up" },
+      "ccw": { "type": "mediaKey", "key": "volume_down" }
     },
-    "wheelModes": [
-        {
-            "name": "volume",
-            "cw": { "type": "shell", "command": "osascript -e 'set volume output volume (output volume of (get volume settings) + 6)'" },
-            "ccw": { "type": "shell", "command": "osascript -e 'set volume output volume (output volume of (get volume settings) - 6)'" }
-        }
-    ]
+    {
+      "name": "zoom",
+      "cw":  { "type": "keystroke", "keystroke": "cmd+=" },
+      "ccw": { "type": "keystroke", "keystroke": "cmd+-" }
+    }
+  ]
 }

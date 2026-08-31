@@ -1,106 +1,124 @@
-# ack05d
+<p align="center">
+  <img src="assets/hero.png" alt="ack05d — XPPen ACK05 shortcut remote driver for macOS" width="100%">
+</p>
 
-A small userspace driver for the **XPPen ACK05 "Shortcut Remote"** on macOS, over
-**Bluetooth LE** — no XPPen driver required. Each key runs a shell command of your
-choosing; the dial wheel drives configurable modes; the dial centre button works.
+<p align="center">
+  <img src="https://img.shields.io/badge/macOS-13%2B-000000?logo=apple&logoColor=white" alt="macOS 13+">
+  <img src="https://img.shields.io/badge/Swift-5.7%2B-F05138?logo=swift&logoColor=white" alt="Swift 5.7+">
+  <img src="https://img.shields.io/badge/transport-Bluetooth%20LE-0a84ff" alt="Bluetooth LE">
+  <img src="https://img.shields.io/badge/license-MIT-12cbb4" alt="MIT">
+</p>
 
-Built because the official XPPen macOS driver (a Qt app) crashes on multi-display
-setups, and because no existing open-source project drives this remote over Bluetooth
-on the Telink hardware revision.
+A userspace driver for the **XPPen ACK05 "Shortcut Remote"** on macOS. It talks to the
+remote directly over Bluetooth LE, so you can bind every key to a shell command, drive
+configurable wheel modes, and use the dial centre button — **without the official XPPen
+driver**.
 
-## Why this exists / how it differs
+Built because the official XPPen macOS driver (a Qt app) crashes on multi-display setups,
+and because no open-source project drove this remote over Bluetooth on the Telink
+hardware revision. `ack05d` does.
 
-The ACK05 has two behaviours:
+## Features
 
-- **Default HID mode** — keys emit fixed keystrokes (Ctrl+Z, Ctrl+S, …). Usable through
-  a remapper, but the keystrokes fire for real if the remapper is not running, and the
-  dial centre button emits nothing.
-- **Vendor/bitmask mode** — keys, dial rotation *and* the dial centre button arrive as
-  one bitmask frame on a private GATT service. This is what the official driver uses,
-  and what `ack05d` speaks.
+- **All 11 buttons + the dial**, including the dial centre button the official driver
+  hides and keystroke remappers can't reach.
+- **Bind anything** — each key runs a shell command: launch an app, switch a tmux
+  session, run a script.
+- **Configurable wheel modes** — the dial cycles through modes you define (e.g. volume,
+  window switching, zoom); the wheel drives the active one.
+- **Native macOS HUD** — volume and brightness show the real system overlay, not a
+  homegrown popup.
+- **No kext, no root, no crashes** — a small signed launch agent; Bluetooth only.
+- **Optional on-screen overlay** showing which action fired.
 
-### Bluetooth vendor mode — the part that was unsolved
-
-The device exposes a proprietary GATT service `FFE0`:
-
-| Characteristic | Use |
-| --- | --- |
-| `0001` | write — command channel |
-| `0002` | notify — acknowledgements; **must be subscribed or `0003` never streams** |
-| `0003` | notify — `0xf0` state frames, `0xf2` battery, `0xf8` reconnect |
-
-On the Telink hardware revision (identifiable by its Telink OTA service
-`00010203-0405-0607-0809-0A0B0C0D1912`), the working handshake is:
-
-1. subscribe `0002`, then `0003`
-2. wait for the first battery heartbeat (proves the link is live)
-3. write `02 b0 04 00 00 00 00 00 00 00` to `0001` **without response**
-
-`ack05d` does this automatically, and falls back to replaying the official driver's
-full seven-packet sequence (`02 b0 04`, `80 06 f1`, `02 b8 04`, `80 06 64/04/03/05`,
-with-response, 500 µs gaps) if no state frame arrives — for units that need it.
-
-The device uses a BLE address that rotates on power-up, so it is always found by
-service UUID, and vendor mode is re-asserted on every reconnect.
-
-## Frame format
-
-`02 f0 <byte2> <byte3> 00 00 00 <byte7> 00 00` (10 bytes over BLE, 12 over USB):
-
-- `byte2` bits → BTN_1..BTN_8, `byte3` bits 0..1 → BTN_9/BTN_10, `byte3` bit 2 → DIAL
-- `byte7` bit 0 → wheel CW, bit 1 → wheel CCW
-- `02 f2 <pct> <charging>` battery; `02 f8 …` reconnect
-
-Frames are full-state; press/release is derived by diffing.
-
-## Build & run
+## Install
 
 ```sh
-swift build -c release
-./.build/release/ack05d --identify     # print each button by name; runs nothing
-./.build/release/ack05d                 # run using ~/.config/ack05d/config.json
+git clone https://github.com/LiveNL/ack05d.git
+cd ack05d
+./install.sh
 ```
 
-`--identify` set `ACK05D_IDENTIFY_OVERLAY=/path/to/overlay` to also show each button
-name on screen.
+That builds the driver, installs it as a login agent (auto-starts, auto-restarts), and
+builds the optional `hud` overlay into `~/.local/bin`. Then create your config (below)
+and press a key.
 
-## Config
+> The wheel's **native volume/brightness HUD** needs Accessibility. `install.sh` prints
+> the one-time step: add the app under **System Settings → Privacy & Security →
+> Accessibility**. Everything else works with no permission.
 
-`~/.config/ack05d/config.json` (or `$XDG_CONFIG_HOME/ack05d/config.json`). See
-`config.example.json`. Button names are `BTN_1`..`BTN_10` and `DIAL` — run
-`--identify` once to learn which physical key is which on your unit.
+## Configure
 
-Action types: `shell` (run `command`, show `label`), `mediaKey` (post a system media
-key — `volume_up`/`volume_down`/`mute`/`brightness_up`/`brightness_down`/`play_pause`/
-`next`/`previous` — raising the native macOS HUD), `wheelModeCycle` (advance the wheel
-mode), `none` (unbound). `overlayCommand` is an optional program called as
-`<cmd> <label> <seconds>` for an on-screen HUD.
+Your mapping lives in `~/.config/ack05d/config.json`. Start from
+[`config.example.json`](config.example.json). Learn which physical key is which:
 
-`mediaKey` posts events via CGEvent, which requires the daemon to be
-**Accessibility-trusted**. Run it from an `.app` bundle and add that bundle under
-System Settings → Privacy & Security → Accessibility. Re-signing the bundle (any
-rebuild that changes the binary) invalidates the grant, so re-add it after a rebuild.
+```sh
+./.build/release/ack05d --identify     # press keys; prints BTN_1..BTN_10 and DIAL
+```
 
-## Autostart
+<p align="center">
+  <img src="assets/buttons.svg" alt="ACK05 button map" width="620">
+</p>
 
-Copy `launchd/io.github.livenl.ack05d.plist.template` to
-`~/Library/LaunchAgents/`, replace `@BIN@` with the built binary path, then
-`launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/io.github.livenl.ack05d.plist`.
+```json
+{
+  "overlayCommand": "/Users/you/.local/bin/hud",
+  "buttons": {
+    "BTN_1": { "type": "shell", "command": "open -a Safari", "label": "Safari" },
+    "DIAL":  { "type": "wheelModeCycle" }
+  },
+  "wheelModes": [
+    {
+      "name": "volume",
+      "cw":  { "type": "mediaKey", "key": "volume_up" },
+      "ccw": { "type": "mediaKey", "key": "volume_down" }
+    },
+    {
+      "name": "zoom",
+      "cw":  { "type": "keystroke", "keystroke": "cmd+=" },
+      "ccw": { "type": "keystroke", "keystroke": "cmd+-" }
+    }
+  ]
+}
+```
 
-## Transports
+### Action types
 
-`ack05d` speaks **Bluetooth LE only** (GATT service `FFE0`). Over a USB-C cable or the
-bundled 2.4 GHz dongle the ACK05 enumerates as USB HID instead, exposing the vendor
-collection on HID usage page `0xFF0A` — reachable via `IOHIDManager` with the same
-`02 b0 04` enable report, but **not yet implemented** here. The Linux kernel HID-BPF
-driver documents that path in full if you want to add it. For now, use the remote over
-Bluetooth.
+| Type | Does | Fields |
+| --- | --- | --- |
+| `shell` | Run a shell command | `command`, `label` |
+| `mediaKey` | Post a system media key (native HUD) | `key` — `volume_up/down`, `mute`, `brightness_up/down`, `play_pause`, `next`, `previous` |
+| `keystroke` | Synthesize a key chord | `keystroke` — e.g. `cmd+=`, `shift+cmd+4` |
+| `wheelModeCycle` | Advance to the next wheel mode | — |
+| `none` | Explicitly unbound | — |
+
+`overlayCommand` is any program called as `<cmd> <label> <seconds>`; the bundled `hud`
+shows a single, fixed-width overlay. Add `"silent": true` to an action whose command
+draws its own overlay. Edit the file and the daemon reloads automatically.
 
 ## Requirements
 
-- macOS 13+
-- Bluetooth. Grant the binary (or its launching terminal) Bluetooth access on first run.
+- macOS 13 or newer, Apple Silicon or Intel
+- Bluetooth (grant Bluetooth access on first run)
+- Xcode command-line tools (`xcode-select --install`) to build
+
+## Uninstall
+
+```sh
+launchctl bootout gui/$(id -u)/io.github.livenl.ack05d
+rm -rf ~/Library/LaunchAgents/io.github.livenl.ack05d.plist "~/Applications/ACK05 Remote.app"
+```
+
+## How it works
+
+`ack05d` puts the remote into its vendor/bitmask mode over a private GATT service and
+decodes the button frames — the same channel the official driver uses. The full
+handshake, frame format, hardware-revision notes and credits are in
+[`docs/PROTOCOL.md`](docs/PROTOCOL.md).
+
+Bluetooth LE is the only implemented transport; USB cable / 2.4 GHz dongle is documented
+there but not yet built.
 
 ## License
 
-MIT — see `LICENSE`.
+MIT — see [`LICENSE`](LICENSE).
