@@ -33,6 +33,18 @@ cp "$REPO/app/AppIcon.icns" "$APP_DIR/Contents/Resources/AppIcon.icns"
 echo "==> signing (identity: $IDENTITY)"
 codesign --force --sign "$IDENTITY" --identifier "$LABEL" "$APP_DIR"
 
+echo "==> building overlay helper (hud)"
+# Optional on-screen HUD used by the example config's overlayCommand. Standalone,
+# needs no permissions. Installed to ~/.local/bin if that dir is on PATH.
+BIN_HOME="$HOME/.local/bin"
+if [ -d "$BIN_HOME" ]; then
+    swiftc -O -o "$BIN_HOME/hud" "$REPO/overlay/hud.swift"
+    pkill -f "hud --server" 2>/dev/null || true
+    echo "    installed $BIN_HOME/hud"
+else
+    echo "    skipped: $BIN_HOME does not exist (add it to PATH to use the overlay)"
+fi
+
 echo "==> installing login agent"
 sed "s#@BIN@#$BIN_DST#" "$REPO/launchd/nl.livenl.ack05d.plist.template" > "$PLIST"
 launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true

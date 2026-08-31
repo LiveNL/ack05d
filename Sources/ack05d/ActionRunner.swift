@@ -36,6 +36,9 @@ final class ActionRunner {
             // here — only overlay if the config gave an explicit label.
             if let name = action.key, let mk = MediaKey(rawValue: name) { mk.post() }
             if let label = action.label { overlay(label) }
+        case .keystroke:
+            if let spec = action.keystroke, let ks = KeyStroke(spec) { ks.post() }
+            if let label = action.label { overlay(label) }
         case .wheelModeCycle:
             guard !config.wheelModes.isEmpty else { return }
             wheelIndex = (wheelIndex + 1) % config.wheelModes.count

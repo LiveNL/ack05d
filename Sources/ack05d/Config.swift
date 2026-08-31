@@ -27,6 +27,8 @@ struct Config: Decodable {
         var command: String?
         /// mediaKey: which system media key to post (see MediaKey.rawValue).
         var key: String?
+        /// keystroke: a key chord to synthesize, e.g. "cmd+=" or "shift+cmd+4".
+        var keystroke: String?
         /// overlay label shown when overlayCommand is set (defaults to the button name).
         var label: String?
         /// suppress the daemon's own overlay for this action — e.g. when the invoked
@@ -36,6 +38,7 @@ struct Config: Decodable {
         enum ActionType: String, Decodable {
             case shell           // run `command`
             case mediaKey        // post a system media key (volume/brightness/…) with native HUD
+            case keystroke       // synthesize a key chord, e.g. "cmd+=" for zoom in
             case wheelModeCycle  // advance to the next wheelModes entry
             case none            // do nothing (explicitly unbound)
         }
