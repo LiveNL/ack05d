@@ -1,0 +1,162 @@
+import Foundation
+import CoreBluetooth
+
+/// Owns the BLE link to the ACK05 and puts it into vendor/bitmask mode.
+///
+/// The vendor stream lives on a proprietary GATT service (FFE0), NOT the HID profile:
+///   - 0001  write            command channel
+///   - 0002  notify           acks; must be subscribed or 0003 never streams
+///   - 0003  notify           0xf0 state frames + 0xf2 battery + 0xf8 reconnect
+///
+/// Two enable recipes, tried in order, because units differ by SoC revision:
+///   simple: subscribe 0002 then 0003, and after the first heartbeat write the 10-byte
+///           enable packet WITHOUT response. Confirmed on the Telink ("ACK05-B") unit.
+///   full:   if no state frame arrives within a grace period, replay the official
+///           driver's 7-packet sequence (with response, 500 µs gaps) as a fallback.
+///
+/// The device uses a random BLE address that rotates on power-up, so it is found by
+/// service UUID / name, never a remembered address, and vendor mode is re-asserted on
+/// every 0xf8 reconnect event.
+final class Transport: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
+    static let service = CBUUID(string: "FFE0")
+    static let chWrite = CBUUID(string: "0001")
+    static let chEnable = CBUUID(string: "0002")
+    static let chNotify = CBUUID(string: "0003")
+
+    static let enablePacket = Data([0x02, 0xb0, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
+    static let fullSequence: [[UInt8]] = [
+        [0x02, 0xb0, 0x04], [0x80, 0x06, 0xf1], [0x02, 0xb8, 0x04],
+        [0x80, 0x06, 0x64], [0x80, 0x06, 0x04], [0x80, 0x06, 0x03], [0x80, 0x06, 0x05],
+    ]
+
+    /// Called on the main run loop for every decoded frame payload.
+    var onFrame: ((Data) -> Void)?
+    /// Called with human-readable status transitions for logging.
+    var onStatus: ((String) -> Void)?
+
+    private var central: CBCentralManager!
+    private var peripheral: CBPeripheral?
+    private var writeChar: CBCharacteristic?
+    private var pending = Set<CBUUID>()
+    private var enabledOnce = false
+    private var sawStateFrame = false
+
+    func start() {
+        central = CBCentralManager(delegate: self, queue: nil)
+    }
+
+    // MARK: Central
+
+    func centralManagerDidUpdateState(_ c: CBCentralManager) {
+        guard c.state == .poweredOn else {
+            onStatus?("bluetooth not ready (state \(c.state.rawValue))")
+            return
+        }
+        connectKnownOrScan()
+    }
+
+    private func connectKnownOrScan() {
+        if let p = central.retrieveConnectedPeripherals(withServices: [Self.service]).first {
+            connect(p)
+        } else {
+            onStatus?("scanning")
+            central.scanForPeripherals(withServices: [Self.service], options: nil)
+        }
+    }
+
+    private func connect(_ p: CBPeripheral) {
+        peripheral = p
+        p.delegate = self
+        central.stopScan()
+        central.connect(p, options: nil)
+    }
+
+    func centralManager(_ c: CBCentralManager, didDiscover p: CBPeripheral,
+                        advertisementData: [String: Any], rssi RSSI: NSNumber) {
+        connect(p)
+    }
+
+    func centralManager(_ c: CBCentralManager, didConnect p: CBPeripheral) {
+        onStatus?("connected")
+        resetState()
+        p.discoverServices([Self.service])
+    }
+
+    func centralManager(_ c: CBCentralManager, didDisconnectPeripheral p: CBPeripheral,
+                        error: Error?) {
+        onStatus?("disconnected, reconnecting")
+        connectKnownOrScan()
+    }
+
+    private func resetState() {
+        pending = []
+        enabledOnce = false
+        sawStateFrame = false
+        writeChar = nil
+    }
+
+    // MARK: Peripheral
+
+    func peripheral(_ p: CBPeripheral, didDiscoverServices error: Error?) {
+        for s in p.services ?? [] where s.uuid == Self.service {
+            p.discoverCharacteristics([Self.chWrite, Self.chEnable, Self.chNotify], for: s)
+        }
+    }
+
+    func peripheral(_ p: CBPeripheral, didDiscoverCharacteristicsFor s: CBService, error: Error?) {
+        guard s.uuid == Self.service else { return }
+        let chars = s.characteristics ?? []
+        writeChar = chars.first { $0.uuid == Self.chWrite }
+        for uuid in [Self.chEnable, Self.chNotify] {
+            if let ch = chars.first(where: { $0.uuid == uuid }) {
+                pending.insert(uuid)
+                p.setNotifyValue(true, for: ch)
+            }
+        }
+    }
+
+    func peripheral(_ p: CBPeripheral, didUpdateNotificationStateFor ch: CBCharacteristic,
+                    error: Error?) {
+        pending.remove(ch.uuid)
+        guard pending.isEmpty else { return }
+        onStatus?("subscribed, waiting for heartbeat to enable vendor mode")
+        // If the simple recipe yields no state frame, fall back to the full sequence.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4) { [weak self] in
+            guard let self, !self.sawStateFrame else { return }
+            self.onStatus?("no frames yet, sending full 7-packet sequence")
+            self.sendFullSequence()
+        }
+    }
+
+    private func enableSimple() {
+        guard !enabledOnce, let wc = writeChar else { return }
+        enabledOnce = true
+        peripheral?.writeValue(Self.enablePacket, for: wc, type: .withoutResponse)
+    }
+
+    private func sendFullSequence() {
+        guard let wc = writeChar, let p = peripheral else { return }
+        for bytes in Self.fullSequence {
+            var b = bytes
+            while b.count < 10 { b.append(0) }
+            p.writeValue(Data(b), for: wc, type: .withResponse)
+            usleep(500)
+        }
+    }
+
+    private func reassert() {
+        enabledOnce = false
+        enableSimple()
+    }
+
+    func peripheral(_ p: CBPeripheral, didUpdateValueFor ch: CBCharacteristic, error: Error?) {
+        guard let v = ch.value else { return }
+        // First heartbeat proves the link is live; that is when the simple enable lands.
+        if !enabledOnce, v.count > 1, v[1] == 0xf2 {
+            enableSimple()
+        }
+        if v.count > 1, v[1] == 0xf0 { sawStateFrame = true }
+        if v.count > 1, v[1] == 0xf8 { reassert() }
+        onFrame?(v)
+    }
+}

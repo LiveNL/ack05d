@@ -1,0 +1,15 @@
+{
+    "overlayCommand": "/usr/bin/osascript -e 'display notification',",
+    "buttons": {
+        "BTN_1": { "type": "shell", "command": "open -a Safari", "label": "Safari" },
+        "BTN_2": { "type": "shell", "command": "open -a Notes", "label": "Notes" },
+        "DIAL": { "type": "wheelModeCycle" }
+    },
+    "wheelModes": [
+        {
+            "name": "volume",
+            "cw": { "type": "shell", "command": "osascript -e 'set volume output volume (output volume of (get volume settings) + 6)'" },
+            "ccw": { "type": "shell", "command": "osascript -e 'set volume output volume (output volume of (get volume settings) - 6)'" }
+        }
+    ]
+}

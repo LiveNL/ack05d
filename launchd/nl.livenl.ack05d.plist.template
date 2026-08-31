@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Copy to ~/Library/LaunchAgents/nl.livenl.ack05d.plist, replace @BIN@ with the
+  installed binary path, then: launchctl bootstrap gui/$UID <plist>.
+  KeepAlive relaunches the daemon if it exits; RunAtLoad starts it at login.
+-->
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>nl.livenl.ack05d</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>@BIN@</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>KeepAlive</key>
+	<true/>
+	<key>StandardErrorPath</key>
+	<string>/tmp/ack05d.log</string>
+	<key>StandardOutPath</key>
+	<string>/tmp/ack05d.log</string>
+</dict>
+</plist>
