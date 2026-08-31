@@ -3,8 +3,10 @@
 #
 #     ./install.sh
 #
-# Signs ad-hoc by default (macOS re-asks for Accessibility after each rebuild).
-# To keep the Accessibility grant across rebuilds, export a code-signing identity:
+# Signs with the "ack05d-signing" identity when it exists (create it once with
+# ./make-signing-cert.sh — keeps Accessibility/login-item/keychain grants across
+# rebuilds), else ad-hoc (macOS re-asks for Accessibility after each rebuild).
+# Override with:
 #
 #     ACK05D_SIGN_IDENTITY="my-cert-name" ./install.sh
 #
@@ -17,6 +19,10 @@ APP_DIR="$HOME/Applications/ACK05 Remote.app"
 BIN_DST="$APP_DIR/Contents/MacOS/ack05d"
 PLIST="$HOME/Library/LaunchAgents/io.github.livenl.ack05d.plist"
 LABEL="io.github.livenl.ack05d"
+if [ -z "${ACK05D_SIGN_IDENTITY:-}" ] \
+    && security find-identity -p codesigning -v 2>/dev/null | grep -q "ack05d-signing"; then
+    ACK05D_SIGN_IDENTITY="ack05d-signing"
+fi
 IDENTITY="${ACK05D_SIGN_IDENTITY:--}"
 REPO="$(cd "$(dirname "$0")" && pwd)"
 
@@ -46,9 +52,17 @@ else
 fi
 
 echo "==> installing login agent"
-sed "s#@BIN@#$BIN_DST#" "$REPO/launchd/io.github.livenl.ack05d.plist.template" > "$PLIST"
-launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
-launchctl bootstrap "gui/$(id -u)" "$PLIST"
+NEW_PLIST="$(sed "s#@BIN@#$BIN_DST#" "$REPO/launchd/io.github.livenl.ack05d.plist.template")"
+if [ -f "$PLIST" ] && [ "$NEW_PLIST" = "$(cat "$PLIST")" ] \
+    && launchctl print "gui/$(id -u)/$LABEL" >/dev/null 2>&1; then
+    # Unchanged and loaded: restart in place. Re-bootstrapping re-registers the
+    # login item and triggers the "added to Login Items" notification every build.
+    launchctl kickstart -k "gui/$(id -u)/$LABEL"
+else
+    printf '%s\n' "$NEW_PLIST" > "$PLIST"
+    launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
+    launchctl bootstrap "gui/$(id -u)" "$PLIST"
+fi
 
 echo
 echo "ack05d installed and running."
