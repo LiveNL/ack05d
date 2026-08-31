@@ -13,7 +13,7 @@
 # works with no permission at all.
 set -eu
 
-APP_DIR="$HOME/Applications/ack05d.app"
+APP_DIR="$HOME/Applications/ACK05 Remote.app"
 BIN_DST="$APP_DIR/Contents/MacOS/ack05d"
 PLIST="$HOME/Library/LaunchAgents/nl.livenl.ack05d.plist"
 LABEL="nl.livenl.ack05d"
