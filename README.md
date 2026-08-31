@@ -70,9 +70,16 @@ name on screen.
 `config.example.json`. Button names are `BTN_1`..`BTN_10` and `DIAL` — run
 `--identify` once to learn which physical key is which on your unit.
 
-Action types: `shell` (run `command`, show `label`), `wheelModeCycle` (advance the
-wheel mode), `none` (unbound). `overlayCommand` is an optional program called as
+Action types: `shell` (run `command`, show `label`), `mediaKey` (post a system media
+key — `volume_up`/`volume_down`/`mute`/`brightness_up`/`brightness_down`/`play_pause`/
+`next`/`previous` — raising the native macOS HUD), `wheelModeCycle` (advance the wheel
+mode), `none` (unbound). `overlayCommand` is an optional program called as
 `<cmd> <label> <seconds>` for an on-screen HUD.
+
+`mediaKey` posts events via CGEvent, which requires the daemon to be
+**Accessibility-trusted**. Run it from an `.app` bundle and add that bundle under
+System Settings → Privacy & Security → Accessibility. Re-signing the bundle (any
+rebuild that changes the binary) invalidates the grant, so re-add it after a rebuild.
 
 ## Autostart
 
