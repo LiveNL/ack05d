@@ -83,9 +83,9 @@ rebuild that changes the binary) invalidates the grant, so re-add it after a reb
 
 ## Autostart
 
-Copy `launchd/nl.livenl.ack05d.plist.template` to
+Copy `launchd/io.github.livenl.ack05d.plist.template` to
 `~/Library/LaunchAgents/`, replace `@BIN@` with the built binary path, then
-`launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/nl.livenl.ack05d.plist`.
+`launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/io.github.livenl.ack05d.plist`.
 
 ## Transports
 

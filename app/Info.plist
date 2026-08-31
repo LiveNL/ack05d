@@ -7,7 +7,7 @@
 	<key>CFBundleDisplayName</key>
 	<string>ACK05 Remote</string>
 	<key>CFBundleIdentifier</key>
-	<string>nl.livenl.ack05d</string>
+	<string>io.github.livenl.ack05d</string>
 	<key>CFBundleExecutable</key>
 	<string>ack05d</string>
 	<key>CFBundleIconFile</key>

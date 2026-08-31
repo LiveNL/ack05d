@@ -15,8 +15,8 @@ set -eu
 
 APP_DIR="$HOME/Applications/ACK05 Remote.app"
 BIN_DST="$APP_DIR/Contents/MacOS/ack05d"
-PLIST="$HOME/Library/LaunchAgents/nl.livenl.ack05d.plist"
-LABEL="nl.livenl.ack05d"
+PLIST="$HOME/Library/LaunchAgents/io.github.livenl.ack05d.plist"
+LABEL="io.github.livenl.ack05d"
 IDENTITY="${ACK05D_SIGN_IDENTITY:--}"
 REPO="$(cd "$(dirname "$0")" && pwd)"
 
@@ -46,7 +46,7 @@ else
 fi
 
 echo "==> installing login agent"
-sed "s#@BIN@#$BIN_DST#" "$REPO/launchd/nl.livenl.ack05d.plist.template" > "$PLIST"
+sed "s#@BIN@#$BIN_DST#" "$REPO/launchd/io.github.livenl.ack05d.plist.template" > "$PLIST"
 launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
 launchctl bootstrap "gui/$(id -u)" "$PLIST"
 

@@ -9,7 +9,7 @@ import AppKit
 // panel instead of stacking two overlapping windows, and the panel keeps a fixed width
 // (text is centered, long text ellipsized) so it never jumps around.
 
-let PORT_NAME = "nl.livenl.hud" as CFString
+let PORT_NAME = "io.github.livenl.hud" as CFString
 let FIXED_WIDTH: CGFloat = 300
 let HEIGHT: CGFloat = 64
 
