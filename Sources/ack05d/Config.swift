@@ -25,11 +25,14 @@ struct Config: Decodable {
         var type: ActionType
         /// shell: the command line. Runs via `/bin/sh -c`.
         var command: String?
+        /// mediaKey: which system media key to post (see MediaKey.rawValue).
+        var key: String?
         /// overlay label shown when overlayCommand is set (defaults to the button name).
         var label: String?
 
         enum ActionType: String, Decodable {
             case shell           // run `command`
+            case mediaKey        // post a system media key (volume/brightness/…) with native HUD
             case wheelModeCycle  // advance to the next wheelModes entry
             case none            // do nothing (explicitly unbound)
         }

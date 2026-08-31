@@ -1,4 +1,5 @@
 import Foundation
+import ApplicationServices
 
 // ack05d — userspace driver for the XPPen ACK05 shortcut remote over Bluetooth LE.
 //
@@ -10,6 +11,7 @@ import Foundation
 
 let args = CommandLine.arguments
 let identifyMode = args.contains("--identify")
+let debug = args.contains("--debug") || ProcessInfo.processInfo.environment["ACK05D_DEBUG"] != nil
 
 func configURL() -> URL {
     if let i = args.firstIndex(of: "--config"), i + 1 < args.count {
@@ -48,6 +50,8 @@ if identifyMode {
     }
 }
 
+log("accessibility trusted: \(AXIsProcessTrusted())")
+
 let transport = Transport()
 transport.onStatus = { log($0) }
 transport.onFrame = { data in
@@ -60,7 +64,10 @@ transport.onFrame = { data in
             break
         case .wheel(let direction):
             if identifyMode || runner == nil { log(direction.rawValue); showIdentify(direction.rawValue) }
-            else { runner?.handleWheel(direction) }
+            else {
+                if debug { log("wheel \(direction.rawValue) mode=\(runner?.currentWheelMode?.name ?? "-")") }
+                runner?.handleWheel(direction)
+            }
         case .battery(let percent, let charging):
             log("battery \(percent)%\(charging ? " (charging)" : "")")
         case .reconnect:

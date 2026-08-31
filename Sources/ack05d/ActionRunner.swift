@@ -31,6 +31,11 @@ final class ActionRunner {
         case .shell:
             if let cmd = action.command { shell(cmd) }
             overlay(action.label ?? defaultLabel)
+        case .mediaKey:
+            // The media key raises macOS's own HUD, so ack05d stays silent by default
+            // here — only overlay if the config gave an explicit label.
+            if let name = action.key, let mk = MediaKey(rawValue: name) { mk.post() }
+            if let label = action.label { overlay(label) }
         case .wheelModeCycle:
             guard !config.wheelModes.isEmpty else { return }
             wheelIndex = (wheelIndex + 1) % config.wheelModes.count
