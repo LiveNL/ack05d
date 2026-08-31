@@ -50,6 +50,8 @@ if identifyMode {
     }
 }
 
+// mediaKey actions need Accessibility. A launchd agent can't surface the grant
+// dialog, so the user adds the app bundle manually (see README / install.sh output).
 log("accessibility trusted: \(AXIsProcessTrusted())")
 
 let transport = Transport()
