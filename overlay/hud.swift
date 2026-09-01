@@ -134,8 +134,17 @@ func sendToServer(_ text: String, _ seconds: Double) -> Bool {
 let args = CommandLine.arguments
 if args.contains("--server") {
     runServer(initial: nil)
+} else if args.count < 2 || args[1].hasPrefix("--") {
+    // No text, or a flag we don't know: print usage instead of flashing "--version".
+    FileHandle.standardError.write(Data("""
+    usage: hud "text" [seconds]
+      Shows a transient on-screen overlay. Repeated calls refresh the same panel.
+      A background server (hud --server) is started automatically on first use.
+
+    """.utf8))
+    exit(args.count < 2 ? 1 : 0)
 } else {
-    let text = args.count > 1 ? args[1] : "hud"
+    let text = args[1]
     let seconds = args.count > 2 ? (Double(args[2]) ?? 0.9) : 0.9
     if sendToServer(text, seconds) {
         // delivered to the running server; done
