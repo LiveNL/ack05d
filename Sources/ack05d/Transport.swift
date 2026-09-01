@@ -148,7 +148,10 @@ final class Transport: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate 
 
     func centralManager(_ c: CBCentralManager, didDisconnectPeripheral p: CBPeripheral,
                         error: Error?) {
-        onStatus?("disconnected, reconnecting")
+        // Surface CoreBluetooth's reason: e.g. CBError 6 = connection timeout (radio /
+        // range), 7 = peripheral disconnected (device closed the link itself).
+        let why = (error as NSError?).map { " (\($0.domain) \($0.code): \($0.localizedDescription))" } ?? " (no error: clean close)"
+        onStatus?("disconnected\(why), reconnecting")
         onLost?()
         // Sleep/wake: the same peripheral returns at the same address, so a pending
         // connect (CoreBluetooth has no timeout) fires the moment it's back — faster

@@ -20,8 +20,11 @@ func configURL() -> URL {
     return Config.defaultURL
 }
 
+let logStamp: DateFormatter = {
+    let f = DateFormatter(); f.dateFormat = "HH:mm:ss"; return f
+}()
 func log(_ s: String) {
-    FileHandle.standardError.write(Data("ack05d: \(s)\n".utf8))
+    FileHandle.standardError.write(Data("\(logStamp.string(from: Date())) ack05d: \(s)\n".utf8))
 }
 
 /// In identify mode, surface the pressed button's name on screen too, so it can be
