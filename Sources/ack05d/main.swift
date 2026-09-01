@@ -67,9 +67,11 @@ transport.onConnecting = {
     // Long duration so it stays up during the handshake; onReady replaces it.
     if !identifyMode, !connectingLabel.isEmpty { runner?.announce(connectingLabel, 12) }
 }
-transport.onReady = {
-    log("remote ready")
-    if !identifyMode, !connectedLabel.isEmpty { runner?.announce(connectedLabel, 1.0) }
+transport.onReady = { battery in
+    log("remote ready\(battery.map { " (\($0)%)" } ?? "")")
+    guard !identifyMode, !connectedLabel.isEmpty else { return }
+    let suffix = battery.map { "  ·  \($0)%" } ?? ""
+    runner?.announce(connectedLabel + suffix, 1.5)
 }
 transport.onLost = {
     if !identifyMode, !disconnectedLabel.isEmpty { runner?.announce(disconnectedLabel) }

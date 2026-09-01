@@ -33,12 +33,13 @@ final class Transport: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate 
     var onFrame: ((Data) -> Void)?
     /// Called with human-readable status transitions for logging.
     var onStatus: ((String) -> Void)?
-    /// Called once per connection when the first state frame proves the remote is live.
-    var onReady: (() -> Void)?
+    /// Called once per connection when the remote is confirmed live, with the latest
+    /// battery percentage if known.
+    var onReady: ((Int?) -> Void)?
     /// Called when the link drops.
     var onLost: (() -> Void)?
-    /// Called when a connection attempt begins (startup or after a drop), for a
-    /// "connecting…" indicator that a later onReady replaces.
+    /// Called when a connection attempt is progressing (startup scan or link up,
+    /// handshaking), for a "connecting…" indicator that a later onReady replaces.
     var onConnecting: (() -> Void)?
 
     private var central: CBCentralManager!
@@ -46,8 +47,10 @@ final class Transport: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate 
     private var writeChar: CBCharacteristic?
     private var pending = Set<CBUUID>()
     private var enabledOnce = false
+    private var enableAcked = false
     private var sawStateFrame = false
     private var announcedReady = false
+    private var lastBattery: Int?
     private var retrieveTimer: Timer?
 
     func start() {
@@ -61,7 +64,6 @@ final class Transport: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate 
             onStatus?("bluetooth not ready (state \(c.state.rawValue))")
             return
         }
-        onConnecting?()
         connectKnownOrScan()
     }
 
@@ -108,6 +110,10 @@ final class Transport: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate 
     func centralManager(_ c: CBCentralManager, didConnect p: CBPeripheral) {
         onStatus?("connected")
         resetState()
+        // Link is up but not ready until the enable handshake acks. Show "connecting…"
+        // here too, so powering the remote back on gives connecting → ready, not just
+        // a lone "ready".
+        onConnecting?()
         p.discoverServices([Self.service])
     }
 
@@ -122,7 +128,6 @@ final class Transport: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate 
                         error: Error?) {
         onStatus?("disconnected, reconnecting")
         onLost?()
-        onConnecting?()
         // Sleep/wake: the same peripheral returns at the same address, so a pending
         // connect (CoreBluetooth has no timeout) fires the moment it's back — faster
         // and more reliable than scanning. Power-cycle rotates the address, so the
@@ -134,15 +139,19 @@ final class Transport: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate 
     private func resetState() {
         pending = []
         enabledOnce = false
+        enableAcked = false
         sawStateFrame = false
         announcedReady = false
+        lastBattery = nil
         writeChar = nil
     }
 
-    private func announceReadyOnce() {
-        guard !announcedReady else { return }
+    // Announce ready once vendor mode is confirmed — either the enable ack arrived or a
+    // real state frame did — carrying the battery level if a heartbeat has been seen.
+    private func maybeAnnounceReady() {
+        guard !announcedReady, enableAcked || sawStateFrame else { return }
         announcedReady = true
-        onReady?()
+        onReady?(lastBattery)
     }
 
     // MARK: Peripheral
@@ -205,12 +214,13 @@ final class Transport: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate 
         if !enabledOnce, v.count > 1, v[1] == 0xf2 {
             enableSimple()
         }
-        // The enable ack (02 b0 01) confirms vendor mode without needing a key press —
-        // the earliest automatic "remote is ready" signal after (re)connect.
-        if v.count > 2, v[1] == 0xb0, v[2] == 0x01 { announceReadyOnce() }
+        // 02 b0 01 = enable ack (vendor mode confirmed, no key press needed).
+        if v.count > 2, v[1] == 0xb0, v[2] == 0x01 { enableAcked = true; maybeAnnounceReady() }
+        // 02 f2 .. = battery heartbeat; remember the level for the ready message.
+        if v.count > 3, v[1] == 0xf2 { lastBattery = Int(v[3]); maybeAnnounceReady() }
         if v.count > 1, v[1] == 0xf0 {
             sawStateFrame = true
-            announceReadyOnce()
+            maybeAnnounceReady()
         }
         if v.count > 1, v[1] == 0xf8 { reassert() }
         onFrame?(v)
