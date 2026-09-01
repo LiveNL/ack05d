@@ -96,7 +96,8 @@ Your mapping lives in `~/.config/ack05d/config.json`. Start from
 
 `overlayCommand` is any program called as `<cmd> <label> <seconds>`; the bundled `hud`
 shows a single, fixed-width overlay. Add `"silent": true` to an action whose command
-draws its own overlay. Edit the file and the daemon reloads automatically.
+draws its own overlay. Edit the file and the daemon hot-reloads it within ~1.5s — no
+restart needed.
 
 `connectingLabel` shows while a connection attempt is in progress (startup or after a
 drop) and is replaced by `connectedLabel` the moment the remote is ready — so you get a

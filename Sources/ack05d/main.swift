@@ -42,19 +42,40 @@ var connectingLabel = "ACK05 connecting…"
 var connectedLabel = "ACK05 ready"
 var disconnectedLabel = ""
 
-if identifyMode {
-    log("identify mode — press buttons; nothing is executed")
-} else {
+func loadConfig() {
     do {
         let config = try Config.load(from: configURL())
         runner = ActionRunner(config: config)
-        connectingLabel = config.connectingLabel ?? connectingLabel
-        connectedLabel = config.connectedLabel ?? connectedLabel
-        disconnectedLabel = config.disconnectedLabel ?? disconnectedLabel
+        connectingLabel = config.connectingLabel ?? "ACK05 connecting…"
+        connectedLabel = config.connectedLabel ?? "ACK05 ready"
+        disconnectedLabel = config.disconnectedLabel ?? ""
         log("loaded config from \(configURL().path)")
     } catch {
         log("could not load config (\(error)). Running in identify mode instead.")
     }
+}
+
+// Watch the config's mtime and hot-reload on change, so edits apply without a restart.
+func startConfigWatcher() {
+    func mtime() -> Date? {
+        try? FileManager.default.attributesOfItem(atPath: configURL().path)[.modificationDate] as? Date
+    }
+    var last = mtime()
+    Timer.scheduledTimer(withTimeInterval: 1.5, repeats: true) { _ in
+        let now = mtime()
+        if let now, now != last {
+            last = now
+            log("config changed, reloading")
+            loadConfig()
+        }
+    }
+}
+
+if identifyMode {
+    log("identify mode — press buttons; nothing is executed")
+} else {
+    loadConfig()
+    startConfigWatcher()
 }
 
 // mediaKey actions need Accessibility. A launchd agent can't surface the grant
