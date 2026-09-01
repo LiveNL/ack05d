@@ -8,6 +8,10 @@ struct Config: Decodable {
     /// on-screen overlay; omit to stay silent. Example: "/Users/me/.local/bin/hud".
     var overlayCommand: String?
 
+    /// Overlay shown while a connection attempt is in progress (startup or after a
+    /// drop); replaced by connectedLabel once ready. Set to "" to suppress. Defaults to
+    /// "ACK05 connecting…".
+    var connectingLabel: String?
     /// Overlay shown when the remote becomes ready after (re)connecting. Set to "" to
     /// suppress. Defaults to "ACK05 ready".
     var connectedLabel: String?

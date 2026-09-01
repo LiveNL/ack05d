@@ -37,6 +37,9 @@ final class Transport: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate 
     var onReady: (() -> Void)?
     /// Called when the link drops.
     var onLost: (() -> Void)?
+    /// Called when a connection attempt begins (startup or after a drop), for a
+    /// "connecting…" indicator that a later onReady replaces.
+    var onConnecting: (() -> Void)?
 
     private var central: CBCentralManager!
     private var peripheral: CBPeripheral?
@@ -58,6 +61,7 @@ final class Transport: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate 
             onStatus?("bluetooth not ready (state \(c.state.rawValue))")
             return
         }
+        onConnecting?()
         connectKnownOrScan()
     }
 
@@ -118,6 +122,7 @@ final class Transport: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate 
                         error: Error?) {
         onStatus?("disconnected, reconnecting")
         onLost?()
+        onConnecting?()
         // Sleep/wake: the same peripheral returns at the same address, so a pending
         // connect (CoreBluetooth has no timeout) fires the moment it's back — faster
         // and more reliable than scanning. Power-cycle rotates the address, so the

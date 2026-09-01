@@ -25,8 +25,8 @@ final class ActionRunner {
     }
 
     /// Show a standalone overlay message (connection status, etc.).
-    func announce(_ label: String) {
-        overlay(label)
+    func announce(_ label: String, _ seconds: Double = 0.8) {
+        overlay(label, seconds)
     }
 
     private func run(_ action: Config.Action, defaultLabel: String) {
@@ -51,9 +51,9 @@ final class ActionRunner {
         }
     }
 
-    private func overlay(_ label: String) {
+    private func overlay(_ label: String, _ seconds: Double = 0.8) {
         guard let cmd = config.overlayCommand else { return }
-        shell("\(cmd) \(shellQuote(label)) 0.8")
+        shell("\(cmd) \(shellQuote(label)) \(seconds)")
     }
 
     private func shell(_ command: String) {

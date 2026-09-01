@@ -38,6 +38,7 @@ func showIdentify(_ label: String) {
 var decoder = FrameDecoder()
 var runner: ActionRunner?
 
+var connectingLabel = "ACK05 connecting…"
 var connectedLabel = "ACK05 ready"
 var disconnectedLabel = ""
 
@@ -47,6 +48,7 @@ if identifyMode {
     do {
         let config = try Config.load(from: configURL())
         runner = ActionRunner(config: config)
+        connectingLabel = config.connectingLabel ?? connectingLabel
         connectedLabel = config.connectedLabel ?? connectedLabel
         disconnectedLabel = config.disconnectedLabel ?? disconnectedLabel
         log("loaded config from \(configURL().path)")
@@ -61,9 +63,13 @@ log("accessibility trusted: \(AXIsProcessTrusted())")
 
 let transport = Transport()
 transport.onStatus = { log($0) }
+transport.onConnecting = {
+    // Long duration so it stays up during the handshake; onReady replaces it.
+    if !identifyMode, !connectingLabel.isEmpty { runner?.announce(connectingLabel, 12) }
+}
 transport.onReady = {
     log("remote ready")
-    if !identifyMode, !connectedLabel.isEmpty { runner?.announce(connectedLabel) }
+    if !identifyMode, !connectedLabel.isEmpty { runner?.announce(connectedLabel, 1.0) }
 }
 transport.onLost = {
     if !identifyMode, !disconnectedLabel.isEmpty { runner?.announce(disconnectedLabel) }
