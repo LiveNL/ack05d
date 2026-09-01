@@ -1,0 +1,22 @@
+ack05d
+Copyright (c) 2026 Jordi Wippert
+Licensed under the MIT License (see LICENSE).
+
+This is an independent, unofficial interoperability driver for the XPPen ACK05
+"Shortcut Remote". It is NOT affiliated with, authorized, sponsored or endorsed
+by XPPen, Hanvon Ugee, or any of their subsidiaries.
+
+"XPPen", "Ugee" and "ACK05" are trademarks of their respective owners. They are
+used in this project solely in a descriptive, nominative sense to identify the
+hardware with which this software interoperates. No claim of ownership over these
+marks is made.
+
+This project contains no source code, firmware, binaries, icons or other assets
+belonging to XPPen or Hanvon Ugee. The device protocol it implements was derived
+for the purpose of interoperability from independent observation of the device
+and from publicly available community projects and documentation, as permitted
+for interoperability under Directive 2009/24/EC (and its national implementations,
+e.g. Art. 45m of the Dutch Auteurswet).
+
+Product reference:
+  https://www.xp-pen.com/product/ack05-wireless-shortcut-remote.html

@@ -1,6 +1,7 @@
 # ACK05 protocol notes
 
-How `ack05d` talks to the XPPen ACK05 over Bluetooth LE, and what was reverse-engineered
+How `ack05d` talks to the [XPPen ACK05](https://www.xp-pen.com/product/ack05-wireless-shortcut-remote.html)
+over Bluetooth LE, and what was reverse-engineered
 to get there. If you only want to use the driver, the [README](../README.md) is enough;
 this is for anyone extending it or porting it.
 

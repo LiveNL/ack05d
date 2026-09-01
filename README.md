@@ -9,7 +9,7 @@
   <img src="https://img.shields.io/badge/license-MIT-12cbb4" alt="MIT">
 </p>
 
-A userspace driver for the **XPPen ACK05 "Shortcut Remote"** on macOS. It talks to the
+A userspace driver for the **[XPPen ACK05 "Shortcut Remote"](https://www.xp-pen.com/product/ack05-wireless-shortcut-remote.html)** on macOS. It talks to the
 remote directly over Bluetooth LE, so you can bind every key to a shell command, drive
 configurable wheel modes, and use the dial centre button — **without the official XPPen
 driver**.
@@ -98,6 +98,12 @@ Your mapping lives in `~/.config/ack05d/config.json`. Start from
 shows a single, fixed-width overlay. Add `"silent": true` to an action whose command
 draws its own overlay. Edit the file and the daemon reloads automatically.
 
+<p align="center">
+  <img src="assets/hud.png" alt="ack05d overlay showing an action label and the active wheel mode" width="560">
+</p>
+
+<p align="center"><sub>The optional <code>hud</code> overlay — one panel that refreshes as you press keys.</sub></p>
+
 ## Requirements
 
 - macOS 13 or newer, Apple Silicon or Intel
@@ -120,6 +126,15 @@ handshake, frame format, hardware-revision notes and credits are in
 
 Bluetooth LE is the only implemented transport; USB cable / 2.4 GHz dongle is documented
 there but not yet built.
+
+## Disclaimer
+
+`ack05d` is an independent, unofficial project and is **not affiliated with, authorized
+or endorsed by XPPen or Hanvon Ugee**. "XPPen" and "ACK05" are trademarks of their
+respective owners, used here only to describe the hardware this driver interoperates
+with. It ships **no XPPen code, firmware or assets** — it is a clean-room interoperability
+implementation built from public sources and independent observation of the device's
+own protocol. See [`NOTICE`](NOTICE).
 
 ## License
 
