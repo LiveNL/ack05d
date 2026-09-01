@@ -1,0 +1,17 @@
+name: build
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [macos-14, macos-15]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift build -c release
+      - run: swiftc -O -o /tmp/hud overlay/hud.swift
+      - run: sh -n install.sh && sh -n make-signing-cert.sh
+      - run: plutil -lint app/Info.plist && python3 -c "import json;json.load(open('config.example.json'))"

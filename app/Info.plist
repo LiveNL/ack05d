@@ -3,11 +3,15 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleName</key>
-	<string>ACK05 Remote</string>
+	<string>ACK05 Remote Community Driver</string>
 	<key>CFBundleDisplayName</key>
-	<string>ACK05 Remote</string>
+	<string>ACK05 Remote Community Driver</string>
 	<key>CFBundleIdentifier</key>
 	<string>io.github.livenl.ack05d</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>13.0</string>
 	<key>CFBundleExecutable</key>
 	<string>ack05d</string>
 	<key>CFBundleIconFile</key>

@@ -151,7 +151,9 @@ if args.contains("--server") {
     } else {
         // no server yet: launch one (detached) that shows this message, then persists
         let p = Process()
-        p.executableURL = URL(fileURLWithPath: CommandLine.arguments[0])
+        // argv[0] is just "hud" when invoked via PATH; resolve the real binary instead.
+        p.executableURL = Bundle.main.executableURL
+            ?? URL(fileURLWithPath: CommandLine.arguments[0])
         p.arguments = ["--server"]
         try? p.run()
         // give it a beat to bind the port, then forward

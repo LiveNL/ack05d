@@ -10,15 +10,18 @@
 #
 #     ACK05D_SIGN_IDENTITY="my-cert-name" ./install.sh
 #
-# Accessibility is ONLY needed for the optional "mediaKey" action (native volume /
-# brightness HUD). Everything else — launching apps, shell commands, the wheel —
-# works with no permission at all.
+# Accessibility is only needed for actions that synthesize input: "mediaKey" (native
+# volume/brightness HUD) and "keystroke". Launching apps, shell commands and the wheel
+# itself work with no permission at all.
 set -eu
 
-APP_DIR="$HOME/Applications/ACK05 Remote.app"
+APP_NAME="ACK05 Remote Community Driver"
+APP_DIR="$HOME/Applications/$APP_NAME.app"
 BIN_DST="$APP_DIR/Contents/MacOS/ack05d"
 PLIST="$HOME/Library/LaunchAgents/io.github.livenl.ack05d.plist"
 LABEL="io.github.livenl.ack05d"
+LOG="$HOME/Library/Logs/ack05d.log"
+CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/ack05d"
 if [ -z "${ACK05D_SIGN_IDENTITY:-}" ] \
     && security find-identity -p codesigning -v 2>/dev/null | grep -q "ack05d-signing"; then
     ACK05D_SIGN_IDENTITY="ack05d-signing"
@@ -41,18 +44,30 @@ codesign --force --sign "$IDENTITY" --identifier "$LABEL" "$APP_DIR"
 
 echo "==> building overlay helper (hud)"
 # Optional on-screen HUD used by the example config's overlayCommand. Standalone,
-# needs no permissions. Installed to ~/.local/bin if that dir is on PATH.
+# needs no permissions. Installed to ~/.local/bin (created if missing).
 BIN_HOME="$HOME/.local/bin"
-if [ -d "$BIN_HOME" ]; then
-    swiftc -O -o "$BIN_HOME/hud" "$REPO/overlay/hud.swift"
-    pkill -f "hud --server" 2>/dev/null || true
-    echo "    installed $BIN_HOME/hud"
+mkdir -p "$BIN_HOME"
+swiftc -O -o "$BIN_HOME/hud" "$REPO/overlay/hud.swift"
+pkill -f "hud --server" 2>/dev/null || true
+echo "    installed $BIN_HOME/hud"
+case ":$PATH:" in
+    *":$BIN_HOME:"*) ;;
+    *) echo "    note: $BIN_HOME is not on your PATH; the config references it by full path, so that's fine" ;;
+esac
+
+echo "==> config"
+mkdir -p "$CONFIG_DIR"
+if [ ! -f "$CONFIG_DIR/config.json" ]; then
+    # Seed from the example, pointing overlayCommand at the hud just built.
+    cp "$REPO/config.example.json" "$CONFIG_DIR/config.json"
+    echo "    created $CONFIG_DIR/config.json from config.example.json"
 else
-    echo "    skipped: $BIN_HOME does not exist (add it to PATH to use the overlay)"
+    echo "    keeping existing $CONFIG_DIR/config.json"
 fi
 
 echo "==> installing login agent"
-NEW_PLIST="$(sed "s#@BIN@#$BIN_DST#" "$REPO/launchd/io.github.livenl.ack05d.plist.template")"
+mkdir -p "$(dirname "$LOG")"
+NEW_PLIST="$(sed -e "s#@BIN@#$BIN_DST#" -e "s#@LOG@#$LOG#" "$REPO/launchd/io.github.livenl.ack05d.plist.template")"
 if [ -f "$PLIST" ] && [ "$NEW_PLIST" = "$(cat "$PLIST")" ] \
     && launchctl print "gui/$(id -u)/$LABEL" >/dev/null 2>&1; then
     # Unchanged and loaded: restart in place. Re-bootstrapping re-registers the
@@ -66,8 +81,15 @@ fi
 
 echo
 echo "ack05d installed and running."
-echo "Config: ${XDG_CONFIG_HOME:-$HOME/.config}/ack05d/config.json"
-echo "Run './.build/release/ack05d --identify' to learn your button names."
+echo "  config : $CONFIG_DIR/config.json  (edits hot-reload)"
+echo "  log    : $LOG"
 echo
-echo "For the native volume/brightness HUD (optional 'mediaKey' actions), add"
-echo "$APP_DIR to System Settings > Privacy & Security > Accessibility."
+echo "Next:"
+echo "  1. If the remote is not paired yet: System Settings > Bluetooth > pair 'Shortcut Remote'."
+echo "  2. Learn your button names: stop the agent first, then run identify:"
+echo "       launchctl bootout gui/\$(id -u)/$LABEL"
+echo "       $REPO/.build/release/ack05d --identify"
+echo "       ./install.sh    # restarts the agent"
+echo "  3. For mediaKey / keystroke actions, add \"$APP_NAME\" under"
+echo "     System Settings > Privacy & Security > Accessibility."
+echo "     Run ./make-signing-cert.sh once so that grant survives future rebuilds."

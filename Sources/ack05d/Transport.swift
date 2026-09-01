@@ -64,7 +64,15 @@ final class Transport: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate 
 
     func centralManagerDidUpdateState(_ c: CBCentralManager) {
         guard c.state == .poweredOn else {
-            onStatus?("bluetooth not ready (state \(c.state.rawValue))")
+            let why: String
+            switch c.state {
+            case .unauthorized: why = "Bluetooth access denied — allow it under System Settings > Privacy & Security > Bluetooth"
+            case .poweredOff: why = "Bluetooth is turned off"
+            case .unsupported: why = "Bluetooth LE not supported on this Mac"
+            case .resetting: why = "Bluetooth is resetting, waiting"
+            default: why = "Bluetooth not ready yet (state \(c.state.rawValue))"
+            }
+            onStatus?(why)
             return
         }
         connectKnownOrScan()
@@ -184,7 +192,9 @@ final class Transport: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate 
         onStatus?("subscribed, waiting for heartbeat to enable vendor mode")
         // If the simple recipe yields no state frame, fall back to the full sequence.
         DispatchQueue.main.asyncAfter(deadline: .now() + 4) { [weak self] in
-            guard let self, !self.sawStateFrame else { return }
+            // The enable ack alone confirms vendor mode; state frames only arrive on a
+            // key press, so don't replay the full sequence when the ack already landed.
+            guard let self, !self.enableAcked, !self.sawStateFrame else { return }
             self.onStatus?("no frames yet, sending full 7-packet sequence")
             self.sendFullSequence()
         }

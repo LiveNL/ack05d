@@ -43,10 +43,16 @@ final class ActionRunner {
         case .mediaKey:
             // The media key raises macOS's own HUD, so ack05d stays silent by default
             // here — only overlay if the config gave an explicit label.
-            if let name = action.key, let mk = MediaKey(rawValue: name) { mk.post() }
+            if let name = action.key {
+                if let mk = MediaKey(rawValue: name) { mk.post() }
+                else { warn("unknown mediaKey \"\(name)\" — see README for valid keys") }
+            }
             if let label = action.label { overlay(label) }
         case .keystroke:
-            if let spec = action.keystroke, let ks = KeyStroke(spec) { ks.post() }
+            if let spec = action.keystroke {
+                if let ks = KeyStroke(spec) { ks.post() }
+                else { warn("unknown keystroke \"\(spec)\" — unsupported key name") }
+            }
             if let label = action.label { overlay(label) }
         case .battery:
             let name = action.label ?? "battery"
@@ -62,6 +68,10 @@ final class ActionRunner {
     private func overlay(_ label: String, _ seconds: Double = 0.8) {
         guard let cmd = config.overlayCommand else { return }
         shell("\(cmd) \(shellQuote(label)) \(seconds)")
+    }
+
+    private func warn(_ s: String) {
+        FileHandle.standardError.write(Data("ack05d: \(s)\n".utf8))
     }
 
     private func shell(_ command: String) {

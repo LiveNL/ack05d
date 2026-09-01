@@ -1,5 +1,5 @@
 {
-  "overlayCommand": "/Users/you/.local/bin/hud",
+  "overlayCommand": "~/.local/bin/hud",
   "connectingLabel": "ACK05 connecting…",
   "connectedLabel": "ACK05 ready",
   "disconnectedLabel": "",

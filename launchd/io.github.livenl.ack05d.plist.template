@@ -2,7 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
   Copy to ~/Library/LaunchAgents/io.github.livenl.ack05d.plist, replace @BIN@ with the
-  installed binary path, then: launchctl bootstrap gui/$UID <plist>.
+  installed binary path and @LOG@ with a log file path (install.sh does both), then:
+  launchctl bootstrap gui/$UID <plist>.
   KeepAlive relaunches the daemon if it exits; RunAtLoad starts it at login.
 -->
 <plist version="1.0">
@@ -18,8 +19,8 @@
 	<key>KeepAlive</key>
 	<true/>
 	<key>StandardErrorPath</key>
-	<string>/tmp/ack05d.log</string>
+	<string>@LOG@</string>
 	<key>StandardOutPath</key>
-	<string>/tmp/ack05d.log</string>
+	<string>@LOG@</string>
 </dict>
 </plist>

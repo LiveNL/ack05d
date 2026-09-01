@@ -36,6 +36,7 @@ func showIdentify(_ label: String) {
 }
 
 var decoder = FrameDecoder()
+var lastLoggedBattery: Int?
 var runner: ActionRunner?
 
 var connectingLabel = "ACK05 connecting…"
@@ -56,7 +57,11 @@ func loadConfig() {
         disconnectedLabel = config.disconnectedLabel ?? ""
         log("loaded config from \(configURL().path)")
     } catch {
-        log("could not load config (\(error)). Running in identify mode instead.")
+        if runner == nil {
+            log("could not load config (\(error)). Running in identify mode instead.")
+        } else {
+            log("config reload failed (\(error)); keeping the previous config")
+        }
     }
 }
 
@@ -83,7 +88,7 @@ if identifyMode {
     startConfigWatcher()
 }
 
-// mediaKey actions need Accessibility. A launchd agent can't surface the grant
+// mediaKey and keystroke actions need Accessibility. A launchd agent can't surface the grant
 // dialog, so the user adds the app bundle manually (see README / install.sh output).
 log("accessibility trusted: \(AXIsProcessTrusted())")
 
@@ -121,7 +126,12 @@ transport.onFrame = { data in
                 runner?.handleWheel(direction)
             }
         case .battery(let percent, let charging):
-            log("battery \(percent)%\(charging ? " (charging)" : "")")
+            // Heartbeats arrive every ~15s; only log when the level actually changes
+            // (or under --debug) so the log doesn't grow by hundreds of KB a day.
+            if debug || percent != lastLoggedBattery {
+                lastLoggedBattery = percent
+                log("battery \(percent)%\(charging ? " (charging)" : "")")
+            }
         case .reconnect:
             log("device reconnect")
         }
