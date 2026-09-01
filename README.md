@@ -57,8 +57,10 @@ Your mapping lives in `~/.config/ack05d/config.json`. Start from
 ```
 
 <p align="center">
-  <img src="assets/buttons.svg" alt="ACK05 button map" width="620">
+  <img src="assets/buttons.svg" alt="ACK05 button layout with the names ack05d reports" width="620">
 </p>
+
+<p align="center"><sub>Button names as <code>ack05d</code> reports them — bind each one in your config.</sub></p>
 
 ```json
 {

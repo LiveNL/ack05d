@@ -2,12 +2,10 @@
   <style>
     .slab { fill: #1b1b1d; }
     .key  { fill: #2b2b2e; stroke: #3a3a3e; stroke-width: 1.5; }
-    .klbl { fill: #e6e6e6; font-size: 18px; font-weight: 600; text-anchor: middle; }
-    .act  { fill: #12cbb4; font-size: 12.5px; text-anchor: middle; }
+    .klbl { fill: #e6e6e6; font-size: 20px; font-weight: 600; text-anchor: middle; }
     .dialring { fill: none; stroke: #12cbb4; stroke-width: 8; }
     .dialhub  { fill: #2b2b2e; }
-    .dlbl { fill: #e6e6e6; font-size: 14px; font-weight: 600; text-anchor: middle; }
-    .dact { fill: #12cbb4; font-size: 11px; text-anchor: middle; }
+    .dlbl { fill: #e6e6e6; font-size: 15px; font-weight: 600; text-anchor: middle; }
   </style>
 
   <rect class="slab" x="8" y="8" width="704" height="344" rx="34"/>
@@ -15,39 +13,29 @@
   <!-- dial -->
   <circle class="dialring" cx="120" cy="180" r="66"/>
   <circle class="dialhub" cx="120" cy="180" r="30"/>
-  <text class="dlbl" x="120" y="176">DIAL</text>
-  <text class="dact" x="120" y="194">cycle mode</text>
-  <text class="dact" x="120" y="285">wheel: volume /</text>
-  <text class="dact" x="120" y="300">tmux / zoom</text>
+  <text class="dlbl" x="120" y="185">DIAL</text>
 
   <!-- key grid: top row K1 K2 K3, tall K7; mid K4 K5 K6; bottom K8, wide K9, K10 -->
-  <!-- row 1 -->
-  <g>
-    <rect class="key" x="250" y="40" width="90" height="70" rx="14"/>
-    <text class="klbl" x="295" y="70">K1</text><text class="act" x="295" y="90">work</text>
-    <rect class="key" x="352" y="40" width="90" height="70" rx="14"/>
-    <text class="klbl" x="397" y="70">K2</text><text class="act" x="397" y="90">personal</text>
-    <rect class="key" x="454" y="40" width="90" height="70" rx="14"/>
-    <text class="klbl" x="499" y="70">K3</text><text class="act" x="499" y="90">iPad</text>
-    <rect class="key" x="556" y="40" width="90" height="172" rx="14"/>
-    <text class="klbl" x="601" y="120">K7</text><text class="act" x="601" y="140">free</text>
-  </g>
-  <!-- row 2 -->
-  <g>
-    <rect class="key" x="250" y="122" width="90" height="70" rx="14"/>
-    <text class="klbl" x="295" y="152">K4</text><text class="act" x="295" y="172">free</text>
-    <rect class="key" x="352" y="122" width="90" height="70" rx="14"/>
-    <text class="klbl" x="397" y="152">K5</text><text class="act" x="397" y="172">free</text>
-    <rect class="key" x="454" y="122" width="90" height="70" rx="14"/>
-    <text class="klbl" x="499" y="152">K6</text><text class="act" x="499" y="172">free</text>
-  </g>
-  <!-- row 3 -->
-  <g>
-    <rect class="key" x="250" y="242" width="90" height="70" rx="14"/>
-    <text class="klbl" x="295" y="272">K8</text><text class="act" x="295" y="292">free</text>
-    <rect class="key" x="352" y="242" width="192" height="70" rx="14"/>
-    <text class="klbl" x="448" y="272">K9</text><text class="act" x="448" y="292">free</text>
-    <rect class="key" x="556" y="242" width="90" height="70" rx="14"/>
-    <text class="klbl" x="601" y="272">K10</text><text class="act" x="601" y="292">free</text>
-  </g>
+  <rect class="key" x="250" y="40" width="90" height="70" rx="14"/>
+  <text class="klbl" x="295" y="82">K1</text>
+  <rect class="key" x="352" y="40" width="90" height="70" rx="14"/>
+  <text class="klbl" x="397" y="82">K2</text>
+  <rect class="key" x="454" y="40" width="90" height="70" rx="14"/>
+  <text class="klbl" x="499" y="82">K3</text>
+  <rect class="key" x="556" y="40" width="90" height="172" rx="14"/>
+  <text class="klbl" x="601" y="132">K7</text>
+
+  <rect class="key" x="250" y="122" width="90" height="70" rx="14"/>
+  <text class="klbl" x="295" y="164">K4</text>
+  <rect class="key" x="352" y="122" width="90" height="70" rx="14"/>
+  <text class="klbl" x="397" y="164">K5</text>
+  <rect class="key" x="454" y="122" width="90" height="70" rx="14"/>
+  <text class="klbl" x="499" y="164">K6</text>
+
+  <rect class="key" x="250" y="242" width="90" height="70" rx="14"/>
+  <text class="klbl" x="295" y="284">K8</text>
+  <rect class="key" x="352" y="242" width="192" height="70" rx="14"/>
+  <text class="klbl" x="448" y="284">K9</text>
+  <rect class="key" x="556" y="242" width="90" height="70" rx="14"/>
+  <text class="klbl" x="601" y="284">K10</text>
 </svg>
