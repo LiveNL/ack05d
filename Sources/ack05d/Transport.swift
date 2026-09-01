@@ -57,6 +57,9 @@ final class Transport: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate 
     }
 
     private func connectKnownOrScan() {
+        // Always clear any previous poll timer first, or a second disconnect leaks one.
+        retrieveTimer?.invalidate()
+        retrieveTimer = nil
         if let p = central.retrieveConnectedPeripherals(withServices: [Self.service]).first {
             connect(p)
         } else {
@@ -78,6 +81,10 @@ final class Transport: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate 
     private func connect(_ p: CBPeripheral) {
         retrieveTimer?.invalidate()
         retrieveTimer = nil
+        // Drop any pending reconnect to a stale peripheral (power-cycle gives a new one).
+        if let old = peripheral, old.identifier != p.identifier {
+            central.cancelPeripheralConnection(old)
+        }
         peripheral = p
         p.delegate = self
         central.stopScan()
@@ -95,9 +102,21 @@ final class Transport: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate 
         p.discoverServices([Self.service])
     }
 
+    func centralManager(_ c: CBCentralManager, didFailToConnect p: CBPeripheral, error: Error?) {
+        // Without this, a failed connect() (after stopScan + timer cancel) leaves the
+        // daemon stuck with neither a scan nor a poll running. Fall back to both.
+        onStatus?("connect failed, retrying")
+        connectKnownOrScan()
+    }
+
     func centralManager(_ c: CBCentralManager, didDisconnectPeripheral p: CBPeripheral,
                         error: Error?) {
         onStatus?("disconnected, reconnecting")
+        // Sleep/wake: the same peripheral returns at the same address, so a pending
+        // connect (CoreBluetooth has no timeout) fires the moment it's back — faster
+        // and more reliable than scanning. Power-cycle rotates the address, so the
+        // scan + poll below remain the fallback; connect() cancels this stale pending.
+        central.connect(p, options: nil)
         connectKnownOrScan()
     }
 
