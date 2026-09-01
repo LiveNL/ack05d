@@ -42,6 +42,9 @@ final class Transport: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate 
     /// handshaking), for a "connecting…" indicator that a later onReady replaces.
     var onConnecting: (() -> Void)?
 
+    /// Latest battery percentage from the device's heartbeat, or nil if not seen yet.
+    var currentBattery: Int? { lastBattery }
+
     private var central: CBCentralManager!
     private var peripheral: CBPeripheral?
     private var writeChar: CBCharacteristic?

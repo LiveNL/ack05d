@@ -42,10 +42,15 @@ var connectingLabel = "ACK05 connecting…"
 var connectedLabel = "ACK05 ready"
 var disconnectedLabel = ""
 
+// Set once transport exists; re-applied to each fresh runner on config reload.
+var batteryProvider: (() -> Int?)?
+
 func loadConfig() {
     do {
         let config = try Config.load(from: configURL())
-        runner = ActionRunner(config: config)
+        let r = ActionRunner(config: config)
+        r.batteryProvider = batteryProvider
+        runner = r
         connectingLabel = config.connectingLabel ?? "ACK05 connecting…"
         connectedLabel = config.connectedLabel ?? "ACK05 ready"
         disconnectedLabel = config.disconnectedLabel ?? ""
@@ -83,6 +88,10 @@ if identifyMode {
 log("accessibility trusted: \(AXIsProcessTrusted())")
 
 let transport = Transport()
+// Wire the battery source now that the transport exists, onto the current runner and
+// any future one built on config reload.
+batteryProvider = { transport.currentBattery }
+runner?.batteryProvider = batteryProvider
 transport.onStatus = { log($0) }
 transport.onConnecting = {
     // Long duration so it stays up during the handshake; onReady replaces it.

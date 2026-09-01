@@ -6,6 +6,10 @@ final class ActionRunner {
     private let config: Config
     private var wheelIndex = 0
 
+    /// Supplies the current battery level for the `battery` action (set by main from
+    /// the transport). Returns nil until a heartbeat has been seen.
+    var batteryProvider: (() -> Int?)?
+
     init(config: Config) {
         self.config = config
     }
@@ -44,6 +48,10 @@ final class ActionRunner {
         case .keystroke:
             if let spec = action.keystroke, let ks = KeyStroke(spec) { ks.post() }
             if let label = action.label { overlay(label) }
+        case .battery:
+            let name = action.label ?? "battery"
+            if let pct = batteryProvider?() { overlay("\(name)  ·  \(pct)%", 1.5) }
+            else { overlay("\(name): unknown", 1.5) }
         case .wheelModeCycle:
             guard !config.wheelModes.isEmpty else { return }
             wheelIndex = (wheelIndex + 1) % config.wheelModes.count

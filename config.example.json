@@ -7,6 +7,7 @@
     "BTN_1": { "type": "shell", "command": "open -a Safari", "label": "Safari" },
     "BTN_2": { "type": "shell", "command": "open -a Notes", "label": "Notes" },
     "BTN_3": { "type": "keystroke", "keystroke": "shift+cmd+4", "label": "screenshot" },
+    "BTN_4": { "type": "battery", "label": "ACK05" },
     "DIAL":  { "type": "wheelModeCycle" }
   },
   "wheelModes": [

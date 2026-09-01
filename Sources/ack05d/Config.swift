@@ -49,6 +49,7 @@ struct Config: Decodable {
             case shell           // run `command`
             case mediaKey        // post a system media key (volume/brightness/…) with native HUD
             case keystroke       // synthesize a key chord, e.g. "cmd+=" for zoom in
+            case battery         // show the remote's battery level in the overlay
             case wheelModeCycle  // advance to the next wheelModes entry
             case none            // do nothing (explicitly unbound)
         }

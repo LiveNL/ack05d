@@ -91,6 +91,7 @@ Your mapping lives in `~/.config/ack05d/config.json`. Start from
 | `shell` | Run a shell command | `command`, `label` |
 | `mediaKey` | Post a system media key (native HUD) | `key` — `volume_up/down`, `mute`, `brightness_up/down`, `play_pause`, `next`, `previous` |
 | `keystroke` | Synthesize a key chord | `keystroke` — e.g. `cmd+=`, `shift+cmd+4` |
+| `battery` | Show the remote's battery level in the overlay | `label` (optional) |
 | `wheelModeCycle` | Advance to the next wheel mode | — |
 | `none` | Explicitly unbound | — |
 
