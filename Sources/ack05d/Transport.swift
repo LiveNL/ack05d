@@ -119,6 +119,17 @@ final class Transport: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate 
     }
 
     func centralManager(_ c: CBCentralManager, didConnect p: CBPeripheral) {
+        // Whichever path landed the link (pending connect, scan, or poll), stop the
+        // others now — otherwise the poll timer's next tick calls connect() again and
+        // restarts the handshake on an already-connected peripheral.
+        retrieveTimer?.invalidate()
+        retrieveTimer = nil
+        c.stopScan()
+        guard p === peripheral || peripheral == nil else {
+            c.cancelPeripheralConnection(p)
+            return
+        }
+        peripheral = p
         onStatus?("connected")
         resetState()
         // Link is up but not ready until the enable handshake acks. Show "connecting…"
@@ -162,7 +173,16 @@ final class Transport: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate 
     private func maybeAnnounceReady() {
         guard !announcedReady, enableAcked || sawStateFrame else { return }
         announcedReady = true
-        onReady?(lastBattery)
+        // The enable ack usually beats the first battery heartbeat by a moment; give the
+        // heartbeat a short grace period so the ready overlay can include the level.
+        if lastBattery != nil {
+            onReady?(lastBattery)
+        } else {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
+                guard let self else { return }
+                self.onReady?(self.lastBattery)
+            }
+        }
     }
 
     // MARK: Peripheral
