@@ -24,6 +24,11 @@ final class ActionRunner {
         run(direction == .cw ? mode.cw : mode.ccw, defaultLabel: mode.name)
     }
 
+    /// Show a standalone overlay message (connection status, etc.).
+    func announce(_ label: String) {
+        overlay(label)
+    }
+
     private func run(_ action: Config.Action, defaultLabel: String) {
         switch action.type {
         case .none:

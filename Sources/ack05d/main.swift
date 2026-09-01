@@ -38,12 +38,17 @@ func showIdentify(_ label: String) {
 var decoder = FrameDecoder()
 var runner: ActionRunner?
 
+var connectedLabel = "ACK05 ready"
+var disconnectedLabel = ""
+
 if identifyMode {
     log("identify mode — press buttons; nothing is executed")
 } else {
     do {
         let config = try Config.load(from: configURL())
         runner = ActionRunner(config: config)
+        connectedLabel = config.connectedLabel ?? connectedLabel
+        disconnectedLabel = config.disconnectedLabel ?? disconnectedLabel
         log("loaded config from \(configURL().path)")
     } catch {
         log("could not load config (\(error)). Running in identify mode instead.")
@@ -56,6 +61,13 @@ log("accessibility trusted: \(AXIsProcessTrusted())")
 
 let transport = Transport()
 transport.onStatus = { log($0) }
+transport.onReady = {
+    log("remote ready")
+    if !identifyMode, !connectedLabel.isEmpty { runner?.announce(connectedLabel) }
+}
+transport.onLost = {
+    if !identifyMode, !disconnectedLabel.isEmpty { runner?.announce(disconnectedLabel) }
+}
 transport.onFrame = { data in
     for event in decoder.decode(data) {
         switch event {

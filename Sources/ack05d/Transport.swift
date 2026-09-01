@@ -33,6 +33,10 @@ final class Transport: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate 
     var onFrame: ((Data) -> Void)?
     /// Called with human-readable status transitions for logging.
     var onStatus: ((String) -> Void)?
+    /// Called once per connection when the first state frame proves the remote is live.
+    var onReady: (() -> Void)?
+    /// Called when the link drops.
+    var onLost: (() -> Void)?
 
     private var central: CBCentralManager!
     private var peripheral: CBPeripheral?
@@ -40,6 +44,7 @@ final class Transport: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate 
     private var pending = Set<CBUUID>()
     private var enabledOnce = false
     private var sawStateFrame = false
+    private var announcedReady = false
     private var retrieveTimer: Timer?
 
     func start() {
@@ -112,6 +117,7 @@ final class Transport: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate 
     func centralManager(_ c: CBCentralManager, didDisconnectPeripheral p: CBPeripheral,
                         error: Error?) {
         onStatus?("disconnected, reconnecting")
+        onLost?()
         // Sleep/wake: the same peripheral returns at the same address, so a pending
         // connect (CoreBluetooth has no timeout) fires the moment it's back — faster
         // and more reliable than scanning. Power-cycle rotates the address, so the
@@ -124,7 +130,14 @@ final class Transport: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate 
         pending = []
         enabledOnce = false
         sawStateFrame = false
+        announcedReady = false
         writeChar = nil
+    }
+
+    private func announceReadyOnce() {
+        guard !announcedReady else { return }
+        announcedReady = true
+        onReady?()
     }
 
     // MARK: Peripheral
@@ -187,7 +200,13 @@ final class Transport: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate 
         if !enabledOnce, v.count > 1, v[1] == 0xf2 {
             enableSimple()
         }
-        if v.count > 1, v[1] == 0xf0 { sawStateFrame = true }
+        // The enable ack (02 b0 01) confirms vendor mode without needing a key press —
+        // the earliest automatic "remote is ready" signal after (re)connect.
+        if v.count > 2, v[1] == 0xb0, v[2] == 0x01 { announceReadyOnce() }
+        if v.count > 1, v[1] == 0xf0 {
+            sawStateFrame = true
+            announceReadyOnce()
+        }
         if v.count > 1, v[1] == 0xf8 { reassert() }
         onFrame?(v)
     }

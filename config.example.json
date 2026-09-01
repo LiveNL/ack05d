@@ -1,5 +1,7 @@
 {
   "overlayCommand": "/Users/you/.local/bin/hud",
+  "connectedLabel": "ACK05 ready",
+  "disconnectedLabel": "",
   "buttons": {
     "BTN_1": { "type": "shell", "command": "open -a Safari", "label": "Safari" },
     "BTN_2": { "type": "shell", "command": "open -a Notes", "label": "Notes" },

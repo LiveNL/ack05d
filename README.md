@@ -98,6 +98,10 @@ Your mapping lives in `~/.config/ack05d/config.json`. Start from
 shows a single, fixed-width overlay. Add `"silent": true` to an action whose command
 draws its own overlay. Edit the file and the daemon reloads automatically.
 
+`connectedLabel` shows an overlay the moment the remote is ready after (re)connecting —
+a boot/wake confirmation. `disconnectedLabel` shows one when the link drops. Set either
+to `""` to suppress; the defaults are `"ACK05 ready"` and silent.
+
 <p align="center">
   <img src="assets/hud.png" alt="ack05d overlay showing an action label and the active wheel mode" width="560">
 </p>
