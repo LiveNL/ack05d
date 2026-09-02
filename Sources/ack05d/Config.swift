@@ -17,6 +17,11 @@ struct Config: Decodable {
     var connectedLabel: String?
     /// Overlay shown when the link drops. Set to "" to suppress. Defaults to "" (silent).
     var disconnectedLabel: String?
+    /// Suppress connecting/ready/disconnected overlays when the remote was in contact
+    /// less than this many seconds ago — a link that flaps at the edge of range
+    /// reconnects silently. Only a remote that was genuinely gone for longer announces
+    /// itself again. Default 180.
+    var quietReconnectSeconds: Double?
 
     /// button name (see Button.rawValue) -> action
     var buttons: [String: Action]

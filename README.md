@@ -118,7 +118,9 @@ restart needed.
 is replaced by `connectedLabel` (with the battery level) the moment the remote is ready —
 so you get a connecting → ready confirmation on boot/wake. `disconnectedLabel` shows when
 the link drops. Set any to `""` to suppress; defaults are `"ACK05 connecting…"`,
-`"ACK05 ready"` and silent.
+`"ACK05 ready"` and silent. A link that flaps at the edge of Bluetooth range reconnects
+**silently**: overlays only show when the remote was out of contact for longer than
+`quietReconnectSeconds` (default 180).
 
 <p align="center">
   <img src="assets/hud.png" alt="ack05d overlay showing an action label and the active wheel mode" width="560">

@@ -45,6 +45,14 @@ var runner: ActionRunner?
 var connectingLabel = "ACK05 connecting…"
 var connectedLabel = "ACK05 ready"
 var disconnectedLabel = ""
+var quietReconnectSeconds: Double = 180
+/// Last moment the remote was in contact (ready or dropped). A reconnect within
+/// quietReconnectSeconds of this is range-flapping, not a fresh session: no overlays.
+var lastContact: Date?
+func quietReconnect() -> Bool {
+    guard let t = lastContact else { return false }
+    return Date().timeIntervalSince(t) < quietReconnectSeconds
+}
 
 // Set once transport exists; re-applied to each fresh runner on config reload.
 var batteryProvider: (() -> Int?)?
@@ -58,6 +66,7 @@ func loadConfig() {
         connectingLabel = config.connectingLabel ?? "ACK05 connecting…"
         connectedLabel = config.connectedLabel ?? "ACK05 ready"
         disconnectedLabel = config.disconnectedLabel ?? ""
+        quietReconnectSeconds = config.quietReconnectSeconds ?? 180
         log("loaded config from \(configURL().path)")
     } catch {
         if runner == nil {
@@ -103,16 +112,21 @@ runner?.batteryProvider = batteryProvider
 transport.onStatus = { log($0) }
 transport.onConnecting = {
     // Long duration so it stays up during the handshake; onReady replaces it.
-    if !identifyMode, !connectingLabel.isEmpty { runner?.announce(connectingLabel, 12) }
+    guard !identifyMode, !connectingLabel.isEmpty, !quietReconnect() else { return }
+    runner?.announce(connectingLabel, 12)
 }
 transport.onReady = { battery in
-    log("remote ready\(battery.map { " (\($0)%)" } ?? "")")
-    guard !identifyMode, !connectedLabel.isEmpty else { return }
+    let quiet = quietReconnect()
+    log("remote ready\(battery.map { " (\($0)%)" } ?? "")\(quiet ? " (quiet reconnect, no overlay)" : "")")
+    lastContact = Date()
+    guard !identifyMode, !connectedLabel.isEmpty, !quiet else { return }
     let suffix = battery.map { "  ·  \($0)%" } ?? ""
     runner?.announce(connectedLabel + suffix, 1.5)
 }
 transport.onLost = {
-    if !identifyMode, !disconnectedLabel.isEmpty { runner?.announce(disconnectedLabel) }
+    let quiet = quietReconnect()
+    lastContact = Date()
+    if !identifyMode, !disconnectedLabel.isEmpty, !quiet { runner?.announce(disconnectedLabel) }
 }
 transport.onFrame = { data in
     for event in decoder.decode(data) {
