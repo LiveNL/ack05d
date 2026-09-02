@@ -22,6 +22,7 @@ final class Transport: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate 
     static let chWrite = CBUUID(string: "0001")
     static let chEnable = CBUUID(string: "0002")
     static let chNotify = CBUUID(string: "0003")
+    static let hidService = CBUUID(string: "1812")
 
     static let enablePacket = Data([0x02, 0xb0, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
     static let fullSequence: [[UInt8]] = [
@@ -84,11 +85,25 @@ final class Transport: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate 
         connectKnownOrScan()
     }
 
+    /// The remote as macOS currently has it connected, if any. Looked up by our vendor
+    /// service first; if that yields nothing (after a power-cycle the remote has a new
+    /// address and macOS hasn't cached FFE0 for it yet — it only speaks HID to it), fall
+    /// back to the HID-over-GATT service every bonded remote exposes, matched by name.
+    /// Without this fallback the daemon can sit in "scanning" forever while the remote
+    /// is already connected in factory keystroke mode.
+    private func systemConnectedRemote() -> CBPeripheral? {
+        if let p = central.retrieveConnectedPeripherals(withServices: [Self.service]).first {
+            return p
+        }
+        return central.retrieveConnectedPeripherals(withServices: [Self.hidService])
+            .first { ($0.name ?? "").localizedCaseInsensitiveContains("shortcut remote") }
+    }
+
     private func connectKnownOrScan() {
         // Always clear any previous poll timer first, or a second disconnect leaks one.
         retrieveTimer?.invalidate()
         retrieveTimer = nil
-        if let p = central.retrieveConnectedPeripherals(withServices: [Self.service]).first {
+        if let p = systemConnectedRemote() {
             connect(p)
         } else {
             onStatus?("scanning")
@@ -98,7 +113,7 @@ final class Transport: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate 
             // connected set until either path lands a peripheral.
             retrieveTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
                 guard let self else { return }
-                if let p = self.central.retrieveConnectedPeripherals(withServices: [Self.service]).first {
+                if let p = self.systemConnectedRemote() {
                     self.onStatus?("found system-connected peripheral")
                     self.connect(p)
                 }
