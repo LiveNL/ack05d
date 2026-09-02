@@ -55,6 +55,12 @@ final class Transport: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate 
     private var announcedReady = false
     private var lastBattery: Int?
     private var retrieveTimer: Timer?
+    /// Consecutive CBError 6 (timeout) disconnects without a completed handshake. A
+    /// remote in soft-off accepts links and drops them; after a few of those we back
+    /// off instead of churning connect/timeout every few seconds.
+    private var consecutiveTimeouts = 0
+    private static let backoffAfter = 3
+    private static let backoffSeconds: TimeInterval = 60
 
     func start() {
         central = CBCentralManager(delegate: self, queue: nil)
@@ -132,10 +138,9 @@ final class Transport: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate 
         peripheral = p
         onStatus?("connected")
         resetState()
-        // Link is up but not ready until the enable handshake acks. Show "connecting…"
-        // here too, so powering the remote back on gives connecting → ready, not just
-        // a lone "ready".
-        onConnecting?()
+        // Don't announce "connecting…" yet: a remote in soft-off accepts the link and
+        // then times out without ever answering service discovery. The overlay fires
+        // once characteristics are subscribed, which a dead link never reaches.
         p.discoverServices([Self.service])
     }
 
@@ -153,6 +158,20 @@ final class Transport: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate 
         let why = (error as NSError?).map { " (\($0.domain) \($0.code): \($0.localizedDescription))" } ?? " (no error: clean close)"
         onStatus?("disconnected\(why), reconnecting")
         onLost?()
+        if let e = error as NSError?, e.domain == CBErrorDomain, e.code == CBError.connectionTimeout.rawValue {
+            consecutiveTimeouts += 1
+        } else {
+            consecutiveTimeouts = 0
+        }
+        if consecutiveTimeouts >= Self.backoffAfter {
+            onStatus?("\(consecutiveTimeouts) timeouts in a row — remote likely asleep; retrying in \(Int(Self.backoffSeconds))s")
+            DispatchQueue.main.asyncAfter(deadline: .now() + Self.backoffSeconds) { [weak self] in
+                guard let self, self.peripheral?.state != .connected else { return }
+                self.central.connect(p, options: nil)
+                self.connectKnownOrScan()
+            }
+            return
+        }
         // Sleep/wake: the same peripheral returns at the same address, so a pending
         // connect (CoreBluetooth has no timeout) fires the moment it's back — faster
         // and more reliable than scanning. Power-cycle rotates the address, so the
@@ -213,6 +232,8 @@ final class Transport: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate 
         pending.remove(ch.uuid)
         guard pending.isEmpty else { return }
         onStatus?("subscribed, waiting for heartbeat to enable vendor mode")
+        consecutiveTimeouts = 0
+        onConnecting?()
         // If the simple recipe yields no state frame, fall back to the full sequence.
         DispatchQueue.main.asyncAfter(deadline: .now() + 4) { [weak self] in
             // The enable ack alone confirms vendor mode; state frames only arrive on a
