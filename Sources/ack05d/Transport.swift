@@ -56,10 +56,19 @@ final class Transport: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate 
     private var announcedReady = false
     private var lastBattery: Int?
     private var retrieveTimer: Timer?
-    /// Consecutive CBError 6 (timeout) disconnects without a completed handshake. A
-    /// remote in soft-off accepts links and drops them; after a few of those we back
-    /// off instead of churning connect/timeout every few seconds.
-    private var consecutiveTimeouts = 0
+    /// Watchdog on a connect() to a scanned or retrieved peripheral. CoreBluetooth never
+    /// times out a pending connect, and connect() stops both the scan and the poll, so a
+    /// remote that rotates its address before the link lands (it does on power-up and
+    /// periodically) leaves the daemon waiting on a peripheral that never comes back:
+    /// no scan, no poll, nothing in the log, keys falling through in factory mode. The
+    /// watchdog drops the stale attempt and goes back to scan + poll.
+    private var connectTimer: Timer?
+    private static let connectTimeout: TimeInterval = 15
+    /// Consecutive failures to reach a handshake: CBError 6 (timeout) disconnects, or
+    /// connect attempts the watchdog dropped. A remote in soft-off accepts links and
+    /// drops them, and a remote macOS reports as connected can still refuse our link;
+    /// after a few of either we back off instead of churning every few seconds.
+    private var consecutiveFailures = 0
     private static let backoffAfter = 3
     private static let backoffSeconds: TimeInterval = 60
 
@@ -103,6 +112,8 @@ final class Transport: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate 
         // Always clear any previous poll timer first, or a second disconnect leaks one.
         retrieveTimer?.invalidate()
         retrieveTimer = nil
+        connectTimer?.invalidate()
+        connectTimer = nil
         if let p = systemConnectedRemote() {
             connect(p)
         } else {
@@ -131,7 +142,29 @@ final class Transport: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate 
         peripheral = p
         p.delegate = self
         central.stopScan()
+        onStatus?("connecting to \(p.name ?? p.identifier.uuidString)")
         central.connect(p, options: nil)
+        armConnectWatchdog(p)
+    }
+
+    private func armConnectWatchdog(_ p: CBPeripheral) {
+        connectTimer?.invalidate()
+        connectTimer = Timer.scheduledTimer(withTimeInterval: Self.connectTimeout, repeats: false) { [weak self] _ in
+            guard let self, p === self.peripheral, p.state != .connected else { return }
+            self.central.cancelPeripheralConnection(p)
+            self.peripheral = nil
+            self.consecutiveFailures += 1
+            if self.consecutiveFailures >= Self.backoffAfter {
+                self.onStatus?("no link after \(Int(Self.connectTimeout))s, \(self.consecutiveFailures) failures in a row; retrying in \(Int(Self.backoffSeconds))s")
+                DispatchQueue.main.asyncAfter(deadline: .now() + Self.backoffSeconds) { [weak self] in
+                    guard let self, self.peripheral?.state != .connected else { return }
+                    self.connectKnownOrScan()
+                }
+                return
+            }
+            self.onStatus?("no link after \(Int(Self.connectTimeout))s, dropping the attempt and rescanning")
+            self.connectKnownOrScan()
+        }
     }
 
     func centralManager(_ c: CBCentralManager, didDiscover p: CBPeripheral,
@@ -145,6 +178,8 @@ final class Transport: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate 
         // restarts the handshake on an already-connected peripheral.
         retrieveTimer?.invalidate()
         retrieveTimer = nil
+        connectTimer?.invalidate()
+        connectTimer = nil
         c.stopScan()
         guard p === peripheral || peripheral == nil else {
             c.cancelPeripheralConnection(p)
@@ -160,6 +195,9 @@ final class Transport: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate 
     }
 
     func centralManager(_ c: CBCentralManager, didFailToConnect p: CBPeripheral, error: Error?) {
+        // A stale attempt the watchdog already dropped reports back here or in
+        // didDisconnect; the fallback it needs is already running.
+        guard p === peripheral else { return }
         // Without this, a failed connect() (after stopScan + timer cancel) leaves the
         // daemon stuck with neither a scan nor a poll running. Fall back to both.
         onStatus?("connect failed, retrying")
@@ -168,18 +206,19 @@ final class Transport: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate 
 
     func centralManager(_ c: CBCentralManager, didDisconnectPeripheral p: CBPeripheral,
                         error: Error?) {
+        guard p === peripheral else { return }
         // Surface CoreBluetooth's reason: e.g. CBError 6 = connection timeout (radio /
         // range), 7 = peripheral disconnected (device closed the link itself).
         let why = (error as NSError?).map { " (\($0.domain) \($0.code): \($0.localizedDescription))" } ?? " (no error: clean close)"
         onStatus?("disconnected\(why), reconnecting")
         onLost?()
         if let e = error as NSError?, e.domain == CBErrorDomain, e.code == CBError.connectionTimeout.rawValue {
-            consecutiveTimeouts += 1
+            consecutiveFailures += 1
         } else {
-            consecutiveTimeouts = 0
+            consecutiveFailures = 0
         }
-        if consecutiveTimeouts >= Self.backoffAfter {
-            onStatus?("\(consecutiveTimeouts) timeouts in a row — remote likely asleep; retrying in \(Int(Self.backoffSeconds))s")
+        if consecutiveFailures >= Self.backoffAfter {
+            onStatus?("\(consecutiveFailures) failures in a row — remote likely asleep; retrying in \(Int(Self.backoffSeconds))s")
             DispatchQueue.main.asyncAfter(deadline: .now() + Self.backoffSeconds) { [weak self] in
                 guard let self, self.peripheral?.state != .connected else { return }
                 self.central.connect(p, options: nil)
@@ -247,7 +286,7 @@ final class Transport: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate 
         pending.remove(ch.uuid)
         guard pending.isEmpty else { return }
         onStatus?("subscribed, waiting for heartbeat to enable vendor mode")
-        consecutiveTimeouts = 0
+        consecutiveFailures = 0
         onConnecting?()
         // If the simple recipe yields no state frame, fall back to the full sequence.
         DispatchQueue.main.asyncAfter(deadline: .now() + 4) { [weak self] in
